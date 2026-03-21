@@ -1,0 +1,4 @@
+  main                fea978b Initial commit: AML GNN Fraud Detection Pipeline with Developer Documentation
+* subgraph_ext        69ae368 restructured folders
+  remotes/origin/HEAD -> origin/main
+  remotes/origin/main fea978b Initial commit: AML GNN Fraud Detection Pipeline with Developer Documentation
