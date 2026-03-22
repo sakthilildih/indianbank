@@ -1,136 +1,138 @@
-# 🏗️ AML GNN: Developer Onboarding & Pipeline Flow
+# 🛡️ IntelliTrace GNN: Anti-Money Laundering & Fraud Detection
 
-Welcome to the **Anti-Money Laundering (AML) Graph Neural Network (GNN)** project! This guide explains the hidden mechanics of our fraud detection pipeline to help you understand, maintain, and extend it.
+Welcome to **IntelliTrace GNN**, a production-ready Graph Neural Network (GNN) pipeline specifically designed for Anti-Money Laundering (AML) and Banking Fraud Detection. 
+
+This system uses PyTorch Geometric to represent bank accounts, mobile numbers, and geographical regions as heavily interconnected graph nodes, allowing for the immediate detection of multi-hop laundering chains, mule clusters, and fan-out structuring evasion tactics.
+
+---
+
+## ✨ Features
+
+- **Synthetic Pattern Generation**: Capable of generating robust transactional datasets containing realistic fraud behaviors like Fan-In, Fan-Out, Structuring, and Fragmentation.
+- **Heterogeneous Graph Architecture**: Nodes encompass Accounts, Names, Mobiles, and Pincodes, allowing the model to intrinsically map out Shared-Identity rings (mule rings).
+- **Behavioral Node Embeddings**: Each node contains a highly engineered 12-dimensional vector profiling bursting logic, velocity, temporal gaps, and average amount structuring.
+- **Targeted Loss Functions**: Implements **Focal Loss** handling steep class imbalances (fraud is often <20% of traffic).
+- **Real-Time Subgraph Extraction**: Contains mathematical utilities to slice out localized $N$-hop subgraphs around incoming transactions, optimizing raw predictive throughput to milliseconds per transaction.
 
 ---
 
 ## 🏛️ System Architecture
 
-Our system is built on a "Generate-Parse-Graph-Train" (GPGT) architecture.
+Our repository follows a structured "Generate-Parse-Graph-Train" (GPGT) lifecycle:
 
 ```mermaid
 graph TD
-    A[generate_dataset.py] -- "transactions_v2.csv" --> B[parse_narration.py]
-    B -- "transactions_parsed.csv" --> C[build_gnn_graph.py]
-    C -- "fraud_gnn_graph.pt" --> D[train_gnn.py]
-    D -- "best_fraud_gnn_model.pth" --> E[Inference / Deployment]
+    A[scripts/generate_data.py] -- "Raw Transactions" --> B[Data Preprocessing]
+    B -- "Parsed Nodes/Edges" --> C[build_gnn_graph.py]
+    C -- "fraud_gnn_graph.pt" --> D[scripts/train_model.py]
+    D -- "Best Model Weights" --> E[scripts/predict.py]
     
-    subgraph Data Generation
+    subgraph Data Pipeline
     A
-    end
-    
-    subgraph Feature Engineering
     B
     C
     end
     
-    subgraph Machine Learning
-    D
+    subgraph Inference & Utilities
+    E
+    F[Subgraph Extraction]
+    G[Visualization/Reporting]
     end
 ```
 
 ---
 
-## 🌊 Data Pipeline Flow
+## 🚀 Quick Start Guide
 
-### 1️⃣ Generation (`generate_dataset.py`)
-Produces synthetic banking data. Unlike simple random generators, this script uses **behavioral templates** to inject 10 distinct fraud patterns.
-- **Input:** Config parameters (num_accounts, seeds).
-- **Core Logic:** Uses `Account Factory` and `Transaction Factory` with `jitter` to prevent overfitting to exact timestamps.
-- **Output:** `transactions_v2.csv` (Raw fields: `txn_id`, `amount`, `timestamp`, `narration`, `label`).
+### 1. Installation
 
-### 2️⃣ Parsing (`parse_narration.py`)
-Banking narrations contain embedded metadata. This step extracts structured features.
-- **Logic:** Regex/Split-based parsing of UPI/IMPS/APP strings.
-- **Feature Extraction:** Extracts `receiver_account`, `receiver_mobile`, `receiver_name`, and `channel`.
-- **Output:** `transactions_parsed.csv`.
-
-### 3️⃣ Graph Construction (`build_gnn_graph.py`)
-Converts tabular data into a **Heterogeneous Knowledge Graph**.
-- **Nodes:** Accounts, Mobiles, Names, Pincodes.
-- **Edges:** 
-    - `Account → Account` (Transaction flow).
-    - `Account → Mobile/Name/Pincode` (Identity links).
-- **Feature Vector:** Each account node gets a **12-dimensional behavioral vector** (see below).
-- **Output:** `fraud_gnn_graph.pt` (PyTorch Geometric Data object).
-
-### 4️⃣ Training (`train_gnn.py`)
-Trains a multi-layer **GraphSAGE** (Sample and Aggregate) model.
-- **Loss Function:** **Focal Loss** (to handle heavy class imbalance where fraud is <20%).
-- **Optimizer:** Adam with `ReduceLROnPlateau` scheduler.
-- **Output:** `best_fraud_gnn_model.pth`.
-
----
-
-## 🧠 Node Feature Engineering (The 12-D Vector)
-
-A developer's most powerful tool here is the feature vector. Each account node's `x` attribute is defined by:
-
-| Index | Feature | Calculation | Fraud Rationale |
-| :--- | :--- | :--- | :--- |
-| **0** | `out_degree` | Total outgoing transactions | High = Money dispersal / Fan-out. |
-| **1** | `in_degree` | Total incoming transactions | High = Money mule / Fan-in collection. |
-| **2** | `txn_count` | Raw transaction volume | Measures base activity level. |
-| **3** | `unique_receivers` | Count of distinct beneficiaries| Detects "Shotgun" dispersal patterns. |
-| **4** | `avg_amount` | Average transaction value | Identifies high-value transfers. |
-| **5** | `std_amount` | Standard deviation of amounts | **Low** = Structuring (repeated small sums). |
-| **6** | `avg_time_gap` | Log(mean seconds between txns) | Small = Rapid burst activity. |
-| **7** | `burst_score` | Count of txns < 60s apart | Direct signal for automated/bot fraud. |
-| **8** | `mobile_shared` | # of accounts sharing this mobile | Detects coordinated mule rings. |
-| **9** | `pincode_risk` | Avg historical fraud in that area | Geographic risk weighting. |
-| **10** | `channel_div` | # of unique channels (UPI, ATM, etc.)| High = Fragmentation/evasion attempt. |
-| **11** | `receiver_div` | Log(Total transaction count) | Volume-based sensitivity adjustment. |
-
----
-
-## 🎭 Fraud Pattern Catalog
-
-The generator (`generate_dataset.py`) creates realism using these 10 patterns:
-
-1.  **Fan-Out:** 1 sender → 5-10 receivers in <1 min (Strong dispersal).
-2.  **Soft Fan-Out:** 1 sender → 2-3 receivers (Stealthier dispersal).
-3.  **Fan-In:** 5-10 senders → 1 receiver in 1 hour (Mule collection).
-4.  **Soft Fan-In:** 2-3 senders → 1 receiver (Stealthier mule).
-5.  **Chain:** A → B → C → D (Laundering through hops).
-6.  **Structuring:** Multiple ₹45k-₹49k transfers (Evading reporting limits).
-7.  **Fragmentation:** Same A → B pair using UPI + IMPS + APP (Splitting signals).
-8.  **Nesting:** Accounts sharing a mobile transacting with each other (In-group laundering).
-9.  **Jurisdiction Risk:** High-volume traffic originating from high-risk pincodes.
-10. **Identity Clusters:** Accounts with the same Name + Pincode transacting in blocks.
-
----
-
-## 🛠️ How to Extend the System
-
-### To Add a New Feature:
-1.  Open `build_gnn_graph.py`.
-2.  Increase the feature vector size: `x = np.zeros((num_nodes, 13))`.
-3.  Calculate your logic in **Step 4** and assign to `x[acc_id][12]`.
-4.  Update the `GNN` model `in_channels` in `train_gnn.py` (it's dynamic, so it should auto-adjust).
-
-### To Add a New Fraud Pattern:
-1.  Open `generate_dataset.py`.
-2.  Locate `5. FRAUD PATTERNS`.
-3.  Add a new block using `make_tx()` to simulate your specific network structure.
-4.  Run the full pipeline to see if the GNN picks it up!
-
----
-
-## 🚀 Quick Start for New Devs
+Requires Python 3.9+ and pip.
 
 ```bash
-# 1. Setup
-pip install torch torch-geometric pandas scikit-learn
-
-# 2. Reset Data & Train
-python generate_dataset.py
-python parse_narration.py
-python build_gnn_graph.py
-python train_gnn.py
-
-# 3. Verify Results
-# Look at 'Classification Report' in the terminal output.
-# Target: Fraud Recall > 0.90
+git clone https://github.com/your-org/intellitrace-gnn.git
+cd intellitrace
+pip install -r requirements.txt
 ```
 
-*Happy Hunting!* 🕵️‍♂️
+### 2. Full Pipeline Execution
+If you want to run the core predictive cycle end-to-end (training and evaluating):
+
+```bash
+# 1. Generate local synthetic transaction history with embedded fraud rules
+python scripts/generate_data.py
+
+# 2. Train the Multi-Layer GraphSAGE model against the network
+python scripts/train_model.py
+
+# 3. Predict incoming fraud risks and output reports
+python scripts/predict.py
+python scripts/generate_report.py
+```
+
+---
+
+## 🔬 Subgraph Extraction & Mule Detection 
+*(New in v2.0)*
+
+Traditional GNNs evaluate the entire multi-million node graph per pass. IntelliTrace scales down to O(1) time complexity per transaction using localized **Neighborhood Subgraphs**.
+
+Located in `src/utils/subgraph_extractor.py`, this tool utilizes PyTorch Geometric's `k_hop_subgraph` to dynamically isolate sender and receiver relationships down to the $N^{th}$ degree. 
+
+**Visualizing Subgraphs Locally**:
+```bash
+python scripts/visualize_subgraph.py
+```
+This script traces a known money launderer outwards by exactly 2 network hops, saving a comprehensive map to `outputs/visualizations/2hop_subgraph_viz.png`.
+
+---
+
+## 🧠 Node Feature Mapping
+
+A developer's most powerful tool here is the feature vector. Each account node's $x$ attribute is mathematically mapped using:
+
+| Feature | Calculation Approach | Suspicious Behavior Logic |
+| :--- | :--- | :--- |
+| `out_degree` / `in_degree` | Total connections in/out | Excessive dispersals (Fan-out) or collections (Fan-in) |
+| `unique_receivers` | Count distinct beneficiaries | "Shotgun pattern" dispersal algorithms |
+| `avg_amount` / `std_amount` | Baseline + Variance | **Low Variance** = Structuring/Evasion limits  |
+| `burst_score` | Count of txns < 60s apart | Bot automation / Scripted transferring |
+| `mobile_shared` | Frequency sharing attributes | **High** = Identical operators orchestrating mules |
+| `channel_div` | Unique channels (UPI, ATM, WEB) | Fragmentation evasion tactics |
+
+---
+
+## 🧪 Testing
+
+We utilize standard Python unit testing to guarantee mathematical network extraction parameters (e.g. strict 2-hop radius clamping).
+
+```bash
+python -m unittest tests/test_subgraph_extractor.py
+```
+
+---
+
+## 📁 Repository Structure
+
+```text
+intellitrace/
+├── data/                    # Generated datasets and raw CSVs
+├── models/                  # Saved .pth GraphSAGE checkpoint models
+├── outputs/                 # HTML UI reports and NetworkX visualizations
+├── scripts/
+│   ├── generate_data.py     # Engine driving the synthetic 10-pattern fraud injector
+│   ├── train_model.py       # PyTorch GraphSAGE orchestration
+│   ├── predict.py           # Inference runtime
+│   └── visualize_subgraph.py# 2-hop graph rendering module
+├── src/
+│   ├── utils/
+│   │   └── subgraph_extractor.py # BFS PyG core slicing logic 
+│   └── visualization/
+│       └── graph_analysis.py    # Raw full-system plotting helpers
+├── tests/
+│   └── test_subgraph_extractor.py # Pytest/Unittest suite
+└── README.md
+```
+
+---
+
+*IntelliTrace: Illuminating the unseeable networks of global finance.* 🕵️‍♂️
