@@ -6,7 +6,7 @@ This system uses PyTorch Geometric to represent bank accounts, mobile numbers, a
 
 ---
 
-## ✨ Features
+## Features
 
 - **Synthetic Pattern Generation**: Capable of generating robust transactional datasets containing realistic fraud behaviors like Fan-In, Fan-Out, Structuring, and Fragmentation.
 - **Heterogeneous Graph Architecture**: Nodes encompass Accounts, Names, Mobiles, and Pincodes, allowing the model to intrinsically map out Shared-Identity rings (mule rings).
@@ -71,8 +71,7 @@ python scripts/generate_report.py
 
 ---
 
-## 🔬 Subgraph Extraction & Mule Detection 
-*(New in v2.0)*
+## Subgraph Extraction & Mule Detection 
 
 Traditional GNNs evaluate the entire multi-million node graph per pass. IntelliTrace scales down to O(1) time complexity per transaction using localized **Neighborhood Subgraphs**.
 
@@ -86,7 +85,7 @@ This script traces a known money launderer outwards by exactly 2 network hops, s
 
 ---
 
-## 🧠 Node Feature Mapping
+## Node Feature Mapping
 
 A developer's most powerful tool here is the feature vector. Each account node's $x$ attribute is mathematically mapped using:
 
@@ -101,7 +100,7 @@ A developer's most powerful tool here is the feature vector. Each account node's
 
 ---
 
-## 🧪 Testing
+## Testing
 
 We utilize standard Python unit testing to guarantee mathematical network extraction parameters (e.g. strict 2-hop radius clamping).
 
@@ -111,7 +110,7 @@ python -m unittest tests/test_subgraph_extractor.py
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```text
 intellitrace/
@@ -134,5 +133,3 @@ intellitrace/
 ```
 
 ---
-
-*IntelliTrace: Illuminating the unseeable networks of global finance.* 🕵️‍♂️
